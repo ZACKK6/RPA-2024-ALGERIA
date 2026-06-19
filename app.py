@@ -195,17 +195,20 @@ if page == "1. Effort Tranchant à la Base (V)":
         ax.legend()
         st.pyplot(fig)
 
-# --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) ---
+# --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) AVEC Ft ---
 elif page == "2. Distribution des Forces (Fi)":
     st.title("📊 Distribution de l'Effort Sismique Relatif (Fi)")
-    st.write("Calculez la répartition de la force sismique globale sur la hauteur du bâtiment selon les critères du RPA 2024.")
+    st.write("Calculez la répartition de la force sismique globale sur la hauteur selon les critères réglementaires du RPA 2024.")
     
     st.markdown("---")
     
-    col_v1, col_v2 = st.columns(2)
+    # Entrées principales
+    col_v1, col_v2, col_v3 = st.columns(3)
     with col_v1:
-        V_input = st.number_input("Entrez l'effort tranchant global V (kN) :", min_value=0.0, value=122.73)
+        V_input = st.number_input("Effort tranchant global V (kN) :", min_value=0.0, value=122.73)
     with col_v2:
+        T_input = st.number_input("Période fondamentale T (seconds) :", min_value=0.0, value=0.450, format="%.3f")
+    with col_v3:
         nb_etages = st.number_input("Nombre total d'étages :", min_value=1, max_value=20, value=3, step=1)
     
     st.markdown("### 🏢 Caractéristiques des Niveaux (Du bas vers le haut) :")
@@ -228,16 +231,37 @@ elif page == "2. Distribution des Forces (Fi)":
         
     st.markdown("---")
     
-    if st.button("🧮 Calculer la Répartition Horizontale (Fi)", type="primary"):
+    if st.button("🧮 Calculer la Répartition Horتباطية (Fi)", type="primary"):
+        # Calcul de la force supplémentaire Ft selon les règles strictes du RPA
+        if T_input > 0.7:
+            Ft = 0.07 * T_input * V_input
+            if Ft > 0.25 * V_input:  # Plafonnée à 25% de V
+                Ft = 0.25 * V_input
+        else:
+            Ft = 0.0
+            
+        V_restant = V_input - Ft
         total_wh = sum(w * h for w, h in zip(weights, heights))
         f_forces = []
         
         for i in range(int(nb_etages)):
-            fi = (V_input * weights[i] * heights[i]) / total_wh
+            # Distribution linéaire de la force restante
+            fi = (V_restant * weights[i] * heights[i]) / total_wh
+            
+            # Application de Ft au dernier niveau uniquement
+            if i == int(nb_etages) - 1:
+                fi += Ft
+                
             f_forces.append(fi)
             
-        st.success("🎉 Les forces horizontales par niveau ont été calculées avec succès !")
+        st.success("🎉 Les forces horizontales ont été calculées avec succès !")
         
+        # Messages informatifs sur la force Ft
+        if Ft > 0:
+            st.info(f"💡 Une force supplémentaire Ft = {Ft:.2f} kN a été appliquée au dernier niveau car T = {T_input:.3f}s > 0.7s (Effet des modes supérieurs).")
+        else:
+            st.info(f"💡 Force Ft = 0.00 kN (Période T = {T_input:.3f}s ≤ 0.7s, l'effet des modes supérieurs est négligable).")
+            
         st.markdown("### 📋 Tableau des forces appliquées à chaque niveau :")
         for i in range(int(nb_etages)):
             st.metric(label=f"Force latérale au Niveau {i+1} (F{i+1})", value=f"{f_forces[i]:.2f} kN")
@@ -276,13 +300,12 @@ elif page == "3. Vérification des Déplacements (P-Delta)":
         with col_p1:
             pk = st.number_input(f"Poids cumulé Pk (kN) :", min_value=1.0, value=1500.0 - (i*500), key=f"pk_{i}")
         with col_p2:
-            dr = st.number_input(f"Déplacement rel. Δk (m) :", min_value=0.001, max_value=0.5, value=0.015, format="%.4f", key=f"dr_{i}")
+            dr = st.number_input(f"Déplacement rel. Δk (m) :", min_value=0.0001, max_value=0.5, value=0.0150, format="%.4f", key=f"dr_{i}")
         with col_p3:
             vk = st.number_input(f"Effort Tranchant Vk (kN) :", min_value=1.0, value=122.73 / (i+1), key=f"vk_{i}")
         with col_p4:
             hk = st.number_input(f"Hauteur Étage hk (m) :", min_value=1.0, value=3.0, key=f"hk_{i}")
             
-        # Formule de l'indice de stabilité (RPA 2024)
         theta_k = (pk * dr) / (vk * hk)
         list_theta.append(theta_k)
 
@@ -310,4 +333,4 @@ elif page == "3. Vérification des Déplacements (P-Delta)":
             st.balloons()
             st.success("🏆 Félicitations ! La structure globale respecte parfaitement les exigences de sécurité du RPA 2024.")
         else:
-            st.error("🚨 Recommandation : Veuillez réviser le système de contreventement (ajouter des voiles ou augmenter les sections)เพื่อ réduire les déplacements.")
+            st.error("🚨 Recommandation : Veuillez réviser le système de contreventement (ajouter des voiles ou augmenter les sections) pour réduire les déplacements.")
