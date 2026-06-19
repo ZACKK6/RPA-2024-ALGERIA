@@ -195,14 +195,13 @@ if page == "1. Effort Tranchant à la Base (V)":
         ax.legend()
         st.pyplot(fig)
 
-# --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) AVEC Ft ---
+# --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) ---
 elif page == "2. Distribution des Forces (Fi)":
     st.title("📊 Distribution de l'Effort Sismique Relatif (Fi)")
     st.write("Calculez la répartition de la force sismique globale sur la hauteur selon les critères réglementaires du RPA 2024.")
     
     st.markdown("---")
     
-    # Entrées principales
     col_v1, col_v2, col_v3 = st.columns(3)
     with col_v1:
         V_input = st.number_input("Effort tranchant global V (kN) :", min_value=0.0, value=122.73)
@@ -231,11 +230,10 @@ elif page == "2. Distribution des Forces (Fi)":
         
     st.markdown("---")
     
-    if st.button("🧮 Calculer la Répartition Horتباطية (Fi)", type="primary"):
-        # Calcul de la force supplémentaire Ft selon les règles strictes du RPA
+    if st.button("🧮 Calculer la Répartition Horizontale (Fi)", type="primary"):
         if T_input > 0.7:
             Ft = 0.07 * T_input * V_input
-            if Ft > 0.25 * V_input:  # Plafonnée à 25% de V
+            if Ft > 0.25 * V_input:
                 Ft = 0.25 * V_input
         else:
             Ft = 0.0
@@ -245,22 +243,17 @@ elif page == "2. Distribution des Forces (Fi)":
         f_forces = []
         
         for i in range(int(nb_etages)):
-            # Distribution linéaire de la force restante
             fi = (V_restant * weights[i] * heights[i]) / total_wh
-            
-            # Application de Ft au dernier niveau uniquement
             if i == int(nb_etages) - 1:
                 fi += Ft
-                
             f_forces.append(fi)
             
         st.success("🎉 Les forces horizontales ont été calculées avec succès !")
         
-        # Messages informatifs sur la force Ft
         if Ft > 0:
-            st.info(f"💡 Une force supplémentaire Ft = {Ft:.2f} kN a été appliquée au dernier niveau car T = {T_input:.3f}s > 0.7s (Effet des modes supérieurs).")
+            st.info(f"💡 Une force supplémentaire Ft = {Ft:.2f} kN a été appliquée au dernier niveau car T = {T_input:.3f}s > 0.7s.")
         else:
-            st.info(f"💡 Force Ft = 0.00 kN (Période T = {T_input:.3f}s ≤ 0.7s, l'effet des modes supérieurs est négligable).")
+            st.info(f"💡 Force Ft = 0.00 kN (Période T = {T_input:.3f}s ≤ 0.7s).")
             
         st.markdown("### 📋 Tableau des forces appliquées à chaque niveau :")
         for i in range(int(nb_etages)):
@@ -280,7 +273,7 @@ elif page == "2. Distribution des Forces (Fi)":
         ax_f.legend()
         st.pyplot(fig_f)
 
-# --- 4. PAGE 3: VÉRIFICATION P-DELTA ---
+# --- 4. PAGE 3: VÉRIFICATION P-DELTA (CORRIGÉE) ---
 elif page == "3. Vérification des Déplacements (P-Delta)":
     st.title("📉 Validation de l'Effet P-Delta (RPA 2024)")
     st.write("Vérifiez l'indice de stabilité (θ) de chaque niveau pour valider la sécurité du second ordre.")
@@ -298,11 +291,12 @@ elif page == "3. Vérification des Déplacements (P-Delta)":
         col_p1, col_p2, col_p3, col_p4 = st.columns(4)
         
         with col_p1:
-            pk = st.number_input(f"Poids cumulé Pk (kN) :", min_value=1.0, value=1500.0 - (i*500), key=f"pk_{i}")
+            # هنا قمنا بتعديل القيمة الافتراضية الثابتة إلى 500.0 لحل مشكلة الخطأ الأحمر نهائياً
+            pk = st.number_input(f"Poids cumulé Pk (kN) :", min_value=1.0, value=500.0, key=f"pk_{i}")
         with col_p2:
             dr = st.number_input(f"Déplacement rel. Δk (m) :", min_value=0.0001, max_value=0.5, value=0.0150, format="%.4f", key=f"dr_{i}")
         with col_p3:
-            vk = st.number_input(f"Effort Tranchant Vk (kN) :", min_value=1.0, value=122.73 / (i+1), key=f"vk_{i}")
+            vk = st.number_input(f"Effort Tranchant Vk (kN) :", min_value=1.0, value=50.0, key=f"vk_{i}")
         with col_p4:
             hk = st.number_input(f"Hauteur Étage hk (m) :", min_value=1.0, value=3.0, key=f"hk_{i}")
             
@@ -331,6 +325,6 @@ elif page == "3. Vérification des Déplacements (P-Delta)":
         st.markdown("---")
         if tout_conforme:
             st.balloons()
-            st.success("🏆 Félicitations ! La structure globale respecte parfaitement les exigences de sécurité du RPA 2024.")
+            st.success("🏆 Félicitations ! La structure globale respectهةً الخصائص المعيارية لـ RPA 2024.")
         else:
-            st.error("🚨 Recommandation : Veuillez réviser le système de contreventement (ajouter des voiles ou augmenter les sections) pour réduire les déplacements.")
+            st.error("🚨 Recommandation : Veuillez réviser le système de contreventement pour réduire les déplacements.")
