@@ -3,21 +3,21 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-# إعدادات الصفحة والواجهة
+# Configuration de la page
 st.set_page_config(page_title="RPA 2024 Pro Max", page_icon="🏗️", layout="centered")
 
-# --- 1. إنشاء القائمة الجانبية للتنقل بين الصفحات ---
-st.sidebar.title("🛠️ القائمة الهندسية / Menu")
-page = st.sidebar.radio("اختر الأداة المطلوبة / Choisir l'outil:", [
-    "1. القوة القصية القاعدية (V)", 
-    "2. توزيع القوى على الطوابق (Fi)", 
-    "3. التحقق من الإزاحات (P-Delta)"
+# --- 1. Menu de Navigation Latéral ---
+st.sidebar.title("🛠️ Menu / القائمة الهندسية")
+page = st.sidebar.radio("Choisir l'outil / اختر الأداة:", [
+    "1. Effort Tranchant à la Base (V)", 
+    "2. Distribution des Forces (Fi)", 
+    "3. Vérification des Déplacements (P-Delta)"
 ])
 
-# --- 2. تفعيل الصفحة الأولى (كودك الحالي بالكامل) ---
-if page == "1. القوة القصية القاعدية (V)":
+# --- 2. PAGE 1: CALCUL DE L'EFFORT TRANCHANT (V) ---
+if page == "1. Effort Tranchant à la Base (V)":
 
-    # --- قاموس اللغات المتكامل ---
+    # Dictionnaire des langues pour la Page 1
     lang_dict = {
         "العربية": {
             "title": "🏗️ نظام التحليل الزلزالي المتكامل - RPA 2024",
@@ -56,7 +56,7 @@ if page == "1. القوة القصية القاعدية (V)":
             "hn_label": "Hauteur totale du bâtiment Hn (m) :",
             "d_label": "Dimension du bâtiment D (m) :",
             "w_label": "Poids total de la structure W (en kN) :",
-            "q_label": "Facteur de quality (Q) :",
+            "q_label": "Facteur de qualité (Q) :",
             "btn_calc": "🧮 Calculer et Tracer le Spectre",
             "success_msg": "🎉 Analyse réussie selon les critères du RPA 2024 !",
             "m_t": "Période fondamentale (T)",
@@ -96,7 +96,7 @@ if page == "1. القوة القصية القاعدية (V)":
         }
     }
 
-    selected_lang = st.sidebar.selectbox("🌐 Language / اللغة / Langue", ["العربية", "Français", "English"])
+    selected_lang = st.sidebar.selectbox("🌐 Language / اللغة / Langue", ["Français", "العربية", "English"])
     text = lang_dict[selected_lang]
 
     if selected_lang == "العربية":
@@ -216,7 +216,7 @@ RÉSULTATS DE CALCUL:
 
 Formule finale: V = (A * D * Q / R) * W
 Généré automatiquement par l'outil Intelligent RPA 2024.
-==================================================Cast"""
+=================================================="""
         
         st.subheader(text["report_title"])
         st.code(report_text, language="text")
@@ -228,15 +228,77 @@ Généré automatiquement par l'outil Intelligent RPA 2024.
             mime="text/plain"
         )
 
-# --- 3. تفعيل الصفحة الثانية (توزيع القوى المستقبلي) ---
-elif page == "2. توزيع القوى على الطوابق (Fi)":
-    st.title("📊 توزيع القوى الزلزالية على الارتفاع (Fi)")
-    st.info("هذا القسم مخصص لحساب القوى الأفقية المؤثرة على كل طابق. سيتم تفعيل المعادلات قريباً!")
+# --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) ---
+elif page == "2. Distribution des Forces (Fi)":
+    st.title("📊 Distribution de l'Effort Sismique Relatif (Fi)")
+    st.write("Calculez la répartition de la force sismique globale sur la hauteur du bâtiment selon les critères du RPA 2024.")
     
-    # حقول تجريبية لبناء الواجهة مستقبلاً
-    nb_etages = st.number_input("عدد الطوابق الإجمالي / Nombre d'étages:", min_value=1, value=3, step=1)
+    st.markdown("---")
+    
+    # Entrées principales
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        V_input = st.number_input("Entrez l'effort tranchant global V (kN) :", min_value=0.0, value=122.73)
+    with col_v2:
+        nb_etages = st.number_input("Nombre total d'étages :", min_value=1, max_value=20, value=3, step=1)
+    
+    st.markdown("### 🏢 Caractéristiques des Niveaux (Du bas vers le haut) :")
+    
+    weights = []
+    heights = []
+    cumulative_height = 0.0
+    
+    # Génération dynamique des champs pour chaque étage
+    for i in range(int(nb_etages)):
+        st.markdown(f"*Niveau {i+1}*")
+        c1, c2 = st.columns(2)
+        with c1:
+            w_i = st.number_input(f"Poids du niveau {i+1} - Wi (kN) :", min_value=1.0, value=500.0, key=f"w_{i}")
+        with c2:
+            h_i = st.number_input(f"Hauteur de cet étage hi (m) :", min_value=1.0, value=3.0, key=f"h_{i}")
+        
+        weights.append(w_i)
+        cumulative_height += h_i
+        heights.append(cumulative_height) # Hauteur cumulée depuis la base
+        
+    st.markdown("---")
+    
+    if st.button("🧮 Calculer la Répartition Horizontale (Fi)", type="primary"):
+        # Calcul de la somme cumulative de (Wi * hi)
+        total_wh = sum(w * h for w, h in zip(weights, heights))
+        
+        # Liste pour stocker les forces calculées
+        f_forces = []
+        
+        for i in range(int(nb_etages)):
+            # Application de la formule de distribution linéaire simplifiée du RPA
+            fi = (V_input * weights[i] * heights[i]) / total_wh
+            f_forces.append(fi)
+            
+        # Affichage des résultats
+        st.success("🎉 Les forces horizontales par niveau ont été calculées avec succès !")
+        
+        st.markdown("### 📋 Tableau des forces appliquées à chaque niveau :")
+        for i in range(int(nb_etages)):
+            st.metric(label=f"Force latérale au Niveau {i+1} (F{i+1})", value=f"{f_forces[i]:.2f} kN")
+            
+        # Graphique représentatif des efforts horizontaux
+        st.markdown("---")
+        st.markdown("### 📉 Diagramme de distribution des charges horizontales (F) :")
+        
+        fig_f, ax_f = plt.subplots(figsize=(6, 4))
+        # Ajout du point zéro (0,0) pour la base
+        plot_heights = [0] + heights
+        plot_forces = [0] + f_forces
+        
+        ax_f.plot(plot_forces, plot_heights, marker='o', color='#00a896', linewidth=2.5, label="Force Fi (kN)")
+        ax_f.set_ylabel("Hauteur cumulée du bâtiment (m)")
+        ax_f.set_xlabel("Effort horizontal appliqué (kN)")
+        ax_f.grid(True, linestyle="--", alpha=0.5)
+        ax_f.legend()
+        st.pyplot(fig_f)
 
-# --- 4. تفعيل الصفحة الثالثة (التحقق من الإزاحات المستقبلي) ---
-elif page == "3. التحقق من الإزاحات (P-Delta)":
-    st.title("📉 تدقيق تأثير P-Delta والإزاحات النسبية")
-    st.info("هذا القسم مخصص للتحقق من الاستقرار الهندسي ومقارنة الإزاحات مع المسموح به في RPA 2024.")
+# --- 4. PAGE 3: VÉRIFICATION P-DELTA (PROCHAINEMENT) ---
+elif page == "3. Vérification des Déplacements (P-Delta)":
+    st.title("📉 Vérification de l'Effet P-Delta et Déplacements")
+    st.info("Cette section est réservée à la validation des critères de stabilité et à la comparaison des déplacements relatifs conformément au RPA 2024.")
