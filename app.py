@@ -17,7 +17,6 @@ page = st.sidebar.radio("Choisir l'outil / اختر الأداة:", [
 # --- 2. PAGE 1: CALCUL DE L'EFFORT TRANCHANT (V) ---
 if page == "1. Effort Tranchant à la Base (V)":
 
-    # Dictionnaire des langues pour la Page 1
     lang_dict = {
         "العربية": {
             "title": "🏗️ نظام التحليل الزلزالي المتكامل - RPA 2024",
@@ -195,38 +194,6 @@ if page == "1. Effort Tranchant à la Base (V)":
         ax.grid(True, linestyle="--", alpha=0.6)
         ax.legend()
         st.pyplot(fig)
-        
-        st.markdown("---")
-        
-        report_text = f"""==================================================
-RAPPORT D'ANALYSE SISMIQUE - RPA 2024
-==================================================
-- Zone Sismique Sélectionnée: {selected_zone}
-- Coefficient d'accélération de base (A): {A:.3f}
-- Catégorie de Sol (Site): {selected_site} (T1={T1}s, T2={T2}s)
-- Coefficient de comportement (R): {R}
-- Facteur de qualité (Q): {Q}
---------------------------------------------------
-RÉSULTATS DE CALCUL:
---------------------------------------------------
-- Période fondamentale du bâtiment (T): {T_final:.3f} s
-- Facteur d'amplification dynamique (D): {D:.3f}
-- Poids total de la structure (W): {W:.2f} kN
-- EFFORT TRANCHANT A LA BASE (V): {V:.2f} kN
-
-Formule finale: V = (A * D * Q / R) * W
-Généré automatiquement par l'outil Intelligent RPA 2024.
-=================================================="""
-        
-        st.subheader(text["report_title"])
-        st.code(report_text, language="text")
-        
-        st.download_button(
-            label=text["download_btn"],
-            data=report_text,
-            file_name=f"Rapport_RPA_2024_{T_final:.2f}s.txt",
-            mime="text/plain"
-        )
 
 # --- 3. PAGE 2: DISTRIBUTION DES FORCES PAR ÉTAGE (Fi) ---
 elif page == "2. Distribution des Forces (Fi)":
@@ -235,7 +202,6 @@ elif page == "2. Distribution des Forces (Fi)":
     
     st.markdown("---")
     
-    # Entrées principales
     col_v1, col_v2 = st.columns(2)
     with col_v1:
         V_input = st.number_input("Entrez l'effort tranchant global V (kN) :", min_value=0.0, value=122.73)
@@ -248,7 +214,6 @@ elif page == "2. Distribution des Forces (Fi)":
     heights = []
     cumulative_height = 0.0
     
-    # Génération dynamique des champs pour chaque étage
     for i in range(int(nb_etages)):
         st.markdown(f"*Niveau {i+1}*")
         c1, c2 = st.columns(2)
@@ -259,35 +224,28 @@ elif page == "2. Distribution des Forces (Fi)":
         
         weights.append(w_i)
         cumulative_height += h_i
-        heights.append(cumulative_height) # Hauteur cumulée depuis la base
+        heights.append(cumulative_height)
         
     st.markdown("---")
     
     if st.button("🧮 Calculer la Répartition Horizontale (Fi)", type="primary"):
-        # Calcul de la somme cumulative de (Wi * hi)
         total_wh = sum(w * h for w, h in zip(weights, heights))
-        
-        # Liste pour stocker les forces calculées
         f_forces = []
         
         for i in range(int(nb_etages)):
-            # Application de la formule de distribution linéaire simplifiée du RPA
             fi = (V_input * weights[i] * heights[i]) / total_wh
             f_forces.append(fi)
             
-        # Affichage des résultats
         st.success("🎉 Les forces horizontales par niveau ont été calculées avec succès !")
         
         st.markdown("### 📋 Tableau des forces appliquées à chaque niveau :")
         for i in range(int(nb_etages)):
             st.metric(label=f"Force latérale au Niveau {i+1} (F{i+1})", value=f"{f_forces[i]:.2f} kN")
             
-        # Graphique représentatif des efforts horizontaux
         st.markdown("---")
         st.markdown("### 📉 Diagramme de distribution des charges horizontales (F) :")
         
         fig_f, ax_f = plt.subplots(figsize=(6, 4))
-        # Ajout du point zéro (0,0) pour la base
         plot_heights = [0] + heights
         plot_forces = [0] + f_forces
         
@@ -298,7 +256,58 @@ elif page == "2. Distribution des Forces (Fi)":
         ax_f.legend()
         st.pyplot(fig_f)
 
-# --- 4. PAGE 3: VÉRIFICATION P-DELTA (PROCHAINEMENT) ---
+# --- 4. PAGE 3: VÉRIFICATION P-DELTA ---
 elif page == "3. Vérification des Déplacements (P-Delta)":
-    st.title("📉 Vérification de l'Effet P-Delta et Déplacements")
-    st.info("Cette section est réservée à la validation des critères de stabilité et à la comparaison des déplacements relatifs conformément au RPA 2024.")
+    st.title("📉 Validation de l'Effet P-Delta (RPA 2024)")
+    st.write("Vérifiez l'indice de stabilité (θ) de chaque niveau pour valider la sécurité du second ordre.")
+    
+    st.markdown("---")
+    
+    nb_niveaux = st.number_input("Nombre de niveaux à vérifier :", min_value=1, max_value=20, value=3, step=1)
+    
+    st.markdown("### 📥 Entrez les données mécaniques de chaque niveau :")
+    
+    list_theta = []
+    
+    for i in range(int(nb_niveaux)):
+        st.markdown(f"*Niveau {i+1}*")
+        col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+        
+        with col_p1:
+            pk = st.number_input(f"Poids cumulé Pk (kN) :", min_value=1.0, value=1500.0 - (i*500), key=f"pk_{i}")
+        with col_p2:
+            dr = st.number_input(f"Déplacement rel. Δk (m) :", min_value=0.001, max_value=0.5, value=0.015, format="%.4f", key=f"dr_{i}")
+        with col_p3:
+            vk = st.number_input(f"Effort Tranchant Vk (kN) :", min_value=1.0, value=122.73 / (i+1), key=f"vk_{i}")
+        with col_p4:
+            hk = st.number_input(f"Hauteur Étage hk (m) :", min_value=1.0, value=3.0, key=f"hk_{i}")
+            
+        # Formule de l'indice de stabilité (RPA 2024)
+        theta_k = (pk * dr) / (vk * hk)
+        list_theta.append(theta_k)
+
+    st.markdown("---")
+    
+    if st.button("🔍 Lancer la Vérification de Stabilité", type="primary"):
+        st.markdown("### 📊 Résultats de l'analyse P-Delta :")
+        
+        tout_conforme = True
+        
+        for i in range(int(nb_niveaux)):
+            tk = list_theta[i]
+            st.write(f"*Niveau {i+1} :*")
+            
+            if tk < 0.10:
+                st.success(f"✅ Conforme | θ = {tk:.4f} < 0.10 (Effet P-Delta négligeable)")
+            elif 0.10 <= tk <= 0.20:
+                st.warning(f"⚠️ Attention | θ = {tk:.4f} [0.10 - 0.20] (Amplification requise de {1/(1-tk):.2f})")
+            else:
+                st.error(f"❌ NON CONFORME | θ = {tk:.4f} > 0.20 (Structure Instable, Augmenter la rigidité !)")
+                tout_conforme = False
+        
+        st.markdown("---")
+        if tout_conforme:
+            st.balloons()
+            st.success("🏆 Félicitations ! La structure globale respecte parfaitement les exigences de sécurité du RPA 2024.")
+        else:
+            st.error("🚨 Recommandation : Veuillez réviser le système de contreventement (ajouter des voiles ou augmenter les sections)เพื่อ réduire les déplacements.")
